@@ -15,7 +15,20 @@ fun readable(c: Color): Color = if (c.luminance() > 0.5f) Color.Black else Color
 @Composable
 fun SafeGrabTheme(prefs: Prefs, content: @Composable () -> Unit) {
     val dark = when (prefs.themeMode) { 1 -> false; 2 -> true; else -> isSystemInDarkTheme() }
-    val base = if (dark) darkColorScheme() else lightColorScheme()
+    val base = if (dark) darkColorScheme(
+        primary = Color(0xFF81D4FA),
+        onPrimary = Color(0xFF003140),
+        secondary = Color(0xFFB39DDB),
+        background = Color(0xFF121212),
+        surface = Color(0xFF1E1E1E),
+        surfaceContainer = Color(0xFF1E1E1E)
+    ) else lightColorScheme(
+        primary = Color(0xFF0288D1),
+        secondary = Color(0xFF512DA8),
+        background = Color(0xFFF9F9F9),
+        surface = Color(0xFFFFFFFF),
+        surfaceContainer = Color(0xFFF1F1F1)
+    )
     val bg = if (prefs.bgColor != 0) Color(prefs.bgColor) else base.background
     val bar = if (prefs.barColor != 0) Color(prefs.barColor) else base.surfaceContainer
     val btn = if (prefs.btnColor != 0) Color(prefs.btnColor) else base.primary

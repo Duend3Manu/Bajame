@@ -39,7 +39,7 @@ data class MediaItem(
     val isPrivate: Boolean = false
 )
 
-/** Lista lo descargado con SafeGrab tanto en la Bóveda Privada como en MediaStore. */
+/** Lista lo descargado con Bajame tanto en la Bóveda Privada como en MediaStore. */
 object Library {
     private val audioExt = setOf("mp3", "m4a", "opus", "ogg", "aac", "flac", "wav")
 
@@ -144,6 +144,20 @@ fun Thumb(item: MediaItem) {
 }
 
 @Composable
+fun VaultScreen(modifier: Modifier) {
+    var subTab by remember { mutableIntStateOf(0) }
+    val subTabs = listOf("Videos" to Kind.VIDEO, "Música" to Kind.AUDIO, "Imágenes" to Kind.IMAGE)
+    Column(modifier.fillMaxSize()) {
+        TabRow(selectedTabIndex = subTab) {
+            subTabs.forEachIndexed { i, (label, _) ->
+                Tab(selected = subTab == i, onClick = { subTab = i }, text = { Text(label) })
+            }
+        }
+        LibraryScreen(kind = subTabs[subTab].second, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
 fun LibraryScreen(kind: Kind, modifier: Modifier) {
     val ctx = LocalContext.current
     var files by remember(kind) { mutableStateOf(emptyList<MediaItem>()) }
@@ -161,7 +175,7 @@ fun LibraryScreen(kind: Kind, modifier: Modifier) {
         )
     } else {
         Column(modifier.fillMaxSize()) {
-            Text("$title descargados con SafeGrab", Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
+            Text("Tus archivos en la Bóveda ($title)", Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
             if (files.isEmpty()) Text("Aún no hay archivos aquí.", Modifier.padding(horizontal = 16.dp))
             LazyColumn {
                 items(files, key = { it.id }) { f ->
