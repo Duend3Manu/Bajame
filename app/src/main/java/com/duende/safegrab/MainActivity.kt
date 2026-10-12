@@ -8,6 +8,8 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +26,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -33,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.fragment.app.FragmentActivity
+import coil.compose.rememberAsyncImagePainter
 import java.io.File
 
 class MainActivity : FragmentActivity() {
@@ -56,15 +61,33 @@ class MainActivity : FragmentActivity() {
 @Composable
 fun App(vm: MainViewModel, initialUrl: String) {
     SafeGrabTheme(vm.prefs) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            val s = vm.state
-            when {
-                vm.prefs.alias.isBlank() -> Onboarding(vm.prefs)
-                vm.locked -> LockScreen(vm)
-                s is UiState.Logging -> LoginScreen(s.host, onDone = { vm.loginDone(s.host, s.url, it) }, onCancel = vm::cancel)
-                s is UiState.Choose -> Picker(vm, s.info)
-                s is UiState.ImagePick -> ImagePicker(s.host, s.url, onDownload = vm::downloadImages, onClose = vm::cancel)
-                else -> MainShell(vm, initialUrl)
+        Box(Modifier.fillMaxSize()) {
+            vm.prefs.customBgPath?.let { bgPath ->
+                val bgFile = File(bgPath)
+                if (bgFile.exists()) {
+                    Image(
+                        painter = rememberAsyncImagePainter(bgFile),
+                        contentDescription = "Fondo personalizado",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
+                }
+            }
+
+            Surface(
+                Modifier.fillMaxSize(),
+                color = if (vm.prefs.customBgPath != null) Color.Transparent else MaterialTheme.colorScheme.background
+            ) {
+                val s = vm.state
+                when {
+                    vm.prefs.alias.isBlank() -> Onboarding(vm.prefs)
+                    vm.locked -> LockScreen(vm)
+                    s is UiState.Logging -> LoginScreen(s.host, onDone = { vm.loginDone(s.host, s.url, it) }, onCancel = vm::cancel)
+                    s is UiState.Choose -> Picker(vm, s.info)
+                    s is UiState.ImagePick -> ImagePicker(s.host, s.url, onDownload = vm::downloadImages, onClose = vm::cancel)
+                    else -> MainShell(vm, initialUrl)
+                }
             }
         }
     }
@@ -123,7 +146,7 @@ fun MainShell(vm: MainViewModel, initialUrl: String) {
     val bar = MaterialTheme.colorScheme.surfaceContainer
     val on = readable(bar)
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         bottomBar = {
             NavigationBar(containerColor = bar) {
                 items.forEachIndexed { i, (label, icon) ->

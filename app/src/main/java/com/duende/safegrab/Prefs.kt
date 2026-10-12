@@ -21,6 +21,8 @@ class Prefs(ctx: Context) {
         private set
     var lockEnabled by mutableStateOf(sp.getBoolean("lock", false))
         private set
+    var customBgPath by mutableStateOf(sp.getString("bg_path", null))
+        private set
 
     fun updateAlias(v: String) {
         val clean = v.trim().take(30)
@@ -45,5 +47,10 @@ class Prefs(ctx: Context) {
     fun setLock(v: Boolean) {
         lockEnabled = v
         sp.edit().putBoolean("lock", v).apply()
+    }
+
+    fun setCustomBg(path: String?) {
+        customBgPath = path
+        sp.edit().putString("bg_path", path).apply()
     }
 }

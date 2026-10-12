@@ -1,39 +1,69 @@
 package com.duende.safegrab
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import java.io.File
 import java.text.DateFormat
 import java.util.Date
+import kotlin.math.atan2
 
 @Composable
-fun ColorPickerRow(label: String, current: Int, default: Color, onChange: (Int) -> Unit) {
-    val start = if (current != 0) Color(current) else default
-    val key = current == 0
-    val init = remember(key) { FloatArray(3).also { android.graphics.Color.colorToHSV(start.toArgb(), it) } }
-    var h by remember(key) { mutableFloatStateOf(init[0]) }
-    var s by remember(key) { mutableFloatStateOf(init[1]) }
-    var v by remember(key) { mutableFloatStateOf(init[2]) }
-    fun emit() = onChange(android.graphics.Color.HSVToColor(floatArrayOf(h, s, v)))
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(28.dp).background(Color(android.graphics.Color.HSVToColor(floatArrayOf(h, s, v))), CircleShape))
-            Spacer(Modifier.width(10.dp))
-            Text(label)
+fun ColorWheelPicker(onColorSelected: (Color) -> Unit) {
+    val rainbowColors = listOf(
+        Color.Red, Color.Magenta, Color.Blue,
+        Color.Cyan, Color.Green, Color.Yellow, Color.Red
+    )
+    var selectedColor by remember { mutableStateOf(Color.Red) }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(selectedColor)
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Canvas(
+            modifier = Modifier
+                .size(160.dp)
+                .clip(CircleShape)
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        val centerX = size.width / 2f
+                        val centerY = size.height / 2f
+                        val dx = offset.x - centerX
+                        val dy = offset.y - centerY
+                        var angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
+                        if (angle < 0) angle += 360f
+                        val newColor = Color.hsv(angle, 1f, 1f)
+                        selectedColor = newColor
+                        onColorSelected(newColor)
+                    }
+                }
+        ) {
+            drawCircle(brush = Brush.sweepGradient(rainbowColors))
         }
-        Slider(h, { h = it; emit() }, valueRange = 0f..360f)   // tono
-        Slider(s, { s = it; emit() })                          // intensidad
-        Slider(v, { v = it; emit() })                          // brillo
     }
 }
 
@@ -43,14 +73,28 @@ fun SettingsScreen(vm: MainViewModel) {
     val ctx = LocalContext.current
     val p = vm.prefs
     val sc = MaterialTheme.colorScheme
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        uri?.let {
+            val privateFile = File(ctx.filesDir, "custom_bg.jpg")
+            ctx.contentResolver.openInputStream(it)?.use { input ->
+                privateFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            p.setCustomBg(privateFile.absolutePath)
+        }
+    }
+
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
             .verticalScroll(rememberScrollState()).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Ajustes", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
-            TextButton(onClick = vm::closeSettings) { Text("Cerrar") }
+            Text("Ajustes y Personalización", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
         }
 
         Text("Apariencia", style = MaterialTheme.typography.titleMedium)
@@ -59,9 +103,35 @@ fun SettingsScreen(vm: MainViewModel) {
             FilterChip(p.themeMode == 1, { p.setTheme(1) }, { Text("Claro") })
             FilterChip(p.themeMode == 2, { p.setTheme(2) }, { Text("Oscuro") })
         }
-        ColorPickerRow("Color de fondo", p.bgColor, sc.background) { p.setColors(it, p.barColor, p.btnColor) }
-        ColorPickerRow("Color de la barra", p.barColor, sc.surfaceContainer) { p.setColors(p.bgColor, it, p.btnColor) }
-        ColorPickerRow("Color de los botones", p.btnColor, sc.primary) { p.setColors(p.bgColor, p.barColor, it) }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        Text("Fondo de Pantalla Personalizado", style = MaterialTheme.typography.titleSmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = {
+                    photoPickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Elegir imagen de galería")
+            }
+            if (p.customBgPath != null) {
+                OutlinedButton(
+                    onClick = { p.setCustomBg(null) },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Quitar fondo")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        Text("Selector de Color Principal (Círculo Cromático)", style = MaterialTheme.typography.titleSmall)
+        ColorWheelPicker { newColor ->
+            p.setColors(p.bgColor, p.barColor, newColor.toArgb())
+        }
         TextButton(onClick = { p.resetColors() }) { Text("Restaurar colores por defecto") }
 
         HorizontalDivider()
@@ -84,7 +154,8 @@ fun SettingsScreen(vm: MainViewModel) {
         }
         Button(
             onClick = vm::panic,
-            colors = ButtonDefaults.buttonColors(containerColor = sc.error, contentColor = sc.onError)
+            colors = ButtonDefaults.buttonColors(containerColor = sc.error, contentColor = sc.onError),
+            shape = RoundedCornerShape(12.dp)
         ) { Text("Borrar todo (sesiones y archivos temporales)") }
 
         HorizontalDivider()
@@ -102,6 +173,6 @@ fun SettingsScreen(vm: MainViewModel) {
             "Tu contraseña la escribes directo en el sitio y la app nunca la ve. Lee PRIVACY.md en el repositorio.",
             style = MaterialTheme.typography.bodySmall
         )
-        Text("SafeGrab ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall)
+        Text("Bajame ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall)
     }
 }
