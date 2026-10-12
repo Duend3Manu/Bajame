@@ -35,8 +35,12 @@ object SafeWebView {
         val ok = allowed(host)
         webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val scheme = request.url.scheme.orEmpty()
+                if (scheme != "http" && scheme != "https") {
+                    return true // Bloquea intents y deep links de apps nativas (instagram://, intent://)
+                }
                 val h = request.url.host.orEmpty()
-                val good = request.url.scheme == "https" && ok.any { h == it || h.endsWith(".$it") }
+                val good = ok.any { h == it || h.endsWith(".$it") }
                 if (!good) Toast.makeText(view.context, "Bloqueado: $h", Toast.LENGTH_SHORT).show()
                 return !good
             }
