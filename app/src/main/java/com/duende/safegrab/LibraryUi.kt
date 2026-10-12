@@ -6,22 +6,28 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
-import android.util.Size
 import android.webkit.MimeTypeMap
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -38,6 +44,21 @@ data class MediaItem(
     val file: File? = null,
     val isPrivate: Boolean = false
 )
+
+fun shareFileFromVault(context: Context, file: File) {
+    val uri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.provider",
+        file
+    )
+    val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase()) ?: "*/*"
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = mime
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, "Compartir archivo con..."))
+}
 
 /** Lista lo descargado con Bajame tanto en la Bóveda Privada como en MediaStore. */
 object Library {
@@ -56,7 +77,7 @@ object Library {
     fun list(ctx: Context, kind: Kind): List<MediaItem> {
         val out = mutableListOf<MediaItem>()
 
-        // 1. Archivos en Bóveda Privada con .nomedia
+        // 1. Archivos en Bóveda Privada (excluyendo archivos ocultos como .nomedia)
         val vaultDir = File(ctx.getExternalFilesDir(null), "Vault")
         if (vaultDir.exists()) {
             vaultDir.listFiles()?.filter { it.isFile && !it.name.startsWith(".") }?.forEachIndexed { idx, file ->
@@ -66,7 +87,7 @@ object Library {
                     out += MediaItem(
                         id = -1000L - idx,
                         uri = Uri.fromFile(file),
-                        name = "🔒 " + file.name,
+                        name = file.name,
                         size = file.length(),
                         mime = mime,
                         kind = kind,
@@ -114,9 +135,13 @@ object Library {
     }
 
     fun share(ctx: Context, i: MediaItem) = runCatching {
-        val send = Intent(Intent.ACTION_SEND).setType(i.mime).putExtra(Intent.EXTRA_STREAM, i.uri)
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        ctx.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        if (i.isPrivate && i.file != null) {
+            shareFileFromVault(ctx, i.file)
+        } else {
+            val send = Intent(Intent.ACTION_SEND).setType(i.mime).putExtra(Intent.EXTRA_STREAM, i.uri)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            ctx.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
     }
 
     fun delete(ctx: Context, i: MediaItem) = runCatching {
@@ -129,17 +154,83 @@ object Library {
 }
 
 @Composable
-fun Thumb(item: MediaItem) {
-    val ctx = LocalContext.current
-    val bmp by produceState<ImageBitmap?>(null, item.uri) {
-        value = withContext(Dispatchers.IO) {
-            runCatching { ctx.contentResolver.loadThumbnail(item.uri, Size(128, 128), null).asImageBitmap() }.getOrNull()
+fun VaultItemCard(
+    item: MediaItem,
+    onPlayClick: (File) -> Unit,
+    onDeleteClick: (MediaItem) -> Unit
+) {
+    val context = LocalContext.current
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable {
+                if (item.file != null && (item.kind == Kind.VIDEO || item.kind == Kind.AUDIO)) {
+                    onPlayClick(item.file)
+                } else {
+                    Library.open(context, item)
+                }
+            },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (item.file != null) {
+                AsyncImage(
+                    model = item.file,
+                    contentDescription = "Miniatura",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(when (item.kind) { Kind.IMAGE -> "🖼️"; Kind.VIDEO -> "🎬"; Kind.AUDIO -> "🎵" })
+                }
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = humanSize(item.size),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Row {
+                IconButton(onClick = { Library.share(context, item) }) {
+                    Icon(imageVector = Icons.Default.Share, contentDescription = "Compartir", tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(onClick = { onDeleteClick(item) }) {
+                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Borrar", tint = MaterialTheme.colorScheme.error)
+                }
+            }
         }
-    }
-    Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
-        val b = bmp
-        if (b != null) Image(b, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        else Text(when (item.kind) { Kind.IMAGE -> "🖼️"; Kind.VIDEO -> "🎬"; Kind.AUDIO -> "🎵" })
     }
 }
 
@@ -177,37 +268,30 @@ fun LibraryScreen(kind: Kind, modifier: Modifier) {
         Column(modifier.fillMaxSize()) {
             Text("Tus archivos en la Bóveda ($title)", Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
             if (files.isEmpty()) Text("Aún no hay archivos aquí.", Modifier.padding(horizontal = 16.dp))
-            LazyColumn {
+            LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp)) {
                 items(files, key = { it.id }) { f ->
-                    ListItem(
-                        leadingContent = { Thumb(f) },
-                        headlineContent = { Text(f.name, maxLines = 2) },
-                        supportingContent = { Text(humanSize(f.size)) },
-                        trailingContent = {
-                            Row {
-                                TextButton(onClick = { Library.share(ctx, f) }) { Text("Enviar") }
-                                TextButton(onClick = { toDelete = f }) { Text("Borrar") }
-                            }
-                        },
-                        modifier = Modifier.clickable {
-                            if (f.file != null && (f.kind == Kind.VIDEO || f.kind == Kind.AUDIO)) {
-                                videoToPlay = f.file
-                            } else {
-                                Library.open(ctx, f)
-                            }
-                        }
+                    VaultItemCard(
+                        item = f,
+                        onPlayClick = { file -> videoToPlay = file },
+                        onDeleteClick = { item -> toDelete = item }
                     )
-                    HorizontalDivider()
                 }
             }
         }
     }
+
     toDelete?.let { d ->
         AlertDialog(
             onDismissRequest = { toDelete = null },
             title = { Text("¿Borrar este archivo?") },
             text = { Text(d.name) },
-            confirmButton = { TextButton(onClick = { Library.delete(ctx, d); toDelete = null; tick++ }) { Text("Borrar") } },
+            confirmButton = {
+                TextButton(onClick = {
+                    Library.delete(ctx, d)
+                    toDelete = null
+                    tick++
+                }) { Text("Borrar") }
+            },
             dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Cancelar") } }
         )
     }
