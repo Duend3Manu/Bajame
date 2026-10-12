@@ -19,6 +19,7 @@ sealed interface UiState {
     data object Analyzing : UiState
     data class Choose(val info: MediaInfo) : UiState
     data class Downloading(val progress: Float, val line: String) : UiState
+    data class AuthPrompt(val host: String, val url: String, val message: String) : UiState
     data class NeedsLogin(val host: String, val url: String, val reason: String) : UiState
     data class Logging(val host: String, val url: String) : UiState
     data class ImagePick(val host: String, val url: String) : UiState
@@ -74,7 +75,11 @@ class MainViewModel(private val app: Application) : AndroidViewModel(app) {
                             SessionHolder.clear()
                             tempCookies = null
                             activeCookies = null
-                            state = UiState.NeedsLogin(host, currentUrl, "La sesión en $host expiró o fue rechazada. Inicia sesión de nuevo.")
+                            state = UiState.AuthPrompt(
+                                host = host,
+                                url = currentUrl,
+                                message = "La sesión en $host expiró o requiere autenticación. ¿Deseas iniciar sesión nuevamente?"
+                            )
                         } else {
                             state = UiState.Error(s.msg)
                         }
@@ -89,7 +94,6 @@ class MainViewModel(private val app: Application) : AndroidViewModel(app) {
     fun start(raw: String) {
         var url = raw.trim()
 
-        // Limpieza de parámetros de rastreo de TikTok
         if (url.contains("tiktok.com")) {
             url = url.substringBefore("?")
         }
@@ -103,25 +107,22 @@ class MainViewModel(private val app: Application) : AndroidViewModel(app) {
     private fun analyze(cookies: String?) {
         activeCookies = cookies
 
-        // Si es X/Twitter y no tenemos cookies activas ni temporales, enviamos a login directamente
-        if ((host == "x.com" || host == "twitter.com") && cookies.isNullOrBlank() && tempCookies.isNullOrBlank()) {
-            store.clear(host)
-            state = UiState.NeedsLogin(host, currentUrl, "X (Twitter) requiere iniciar sesión para descargar videos.")
-            return
-        }
-
         state = UiState.Analyzing
         viewModelScope.launch {
             Downloader.analyze(app, currentUrl, cookies)
                 .onSuccess { state = UiState.Choose(it) }
                 .onFailure { e ->
                     val msg = e.message.orEmpty()
-                    if (looksLikeAuth(msg) || host == "x.com" || host == "twitter.com") {
+                    if (looksLikeAuth(msg)) {
                         store.clear(host)
                         SessionHolder.clear()
                         tempCookies = null
                         activeCookies = null
-                        state = UiState.NeedsLogin(host, currentUrl, "X requiere una sesión activa para este contenido.")
+                        state = UiState.AuthPrompt(
+                            host = host,
+                            url = currentUrl,
+                            message = "Este contenido en $host requiere iniciar sesión para poder descargarlo. ¿Deseas iniciar sesión temporalmente?"
+                        )
                     } else if (!retried && autoUpdates) {
                         retried = true
                         Updater.updateEngine(app, true)   // el sitio pudo cambiar: actualiza el motor y reintenta
@@ -193,8 +194,8 @@ class MainViewModel(private val app: Application) : AndroidViewModel(app) {
 
         Cookies.wipeWebView()                       // el WebView queda limpio al instante
 
-        if (finalCookies.isNullOrBlank() || ((h == "x.com" || h == "twitter.com") && !finalCookies.contains("auth_token"))) {
-            state = UiState.Error("No se detectó el inicio de sesión en X. Inicia sesión completamente.")
+        if (finalCookies.isNullOrBlank()) {
+            state = UiState.Error("No se detectó el inicio de sesión. Inicia sesión completamente.")
             return
         }
 

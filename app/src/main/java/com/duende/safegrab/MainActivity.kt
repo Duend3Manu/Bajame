@@ -69,7 +69,7 @@ fun Onboarding(prefs: Prefs) {
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
     ) {
-        Text("Bienvenido a SafeGrab", style = MaterialTheme.typography.headlineMedium)
+        Text("Bienvenido a Bajame", style = MaterialTheme.typography.headlineMedium)
         Text(
             "No necesitas cuenta, correo ni contraseña. Todo lo que hagas se queda en tu teléfono: " +
             "sin servidores, sin intermediarios, sin analíticas.",
@@ -96,7 +96,7 @@ fun LockScreen(vm: MainViewModel) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("🔒", style = MaterialTheme.typography.displayMedium)
-        Text("SafeGrab está bloqueado", style = MaterialTheme.typography.titleLarge)
+        Text("Bajame está bloqueado", style = MaterialTheme.typography.titleLarge)
         if (msg.isNotBlank()) Text(msg, style = MaterialTheme.typography.bodySmall)
         Button(onClick = { ask() }) { Text("Desbloquear") }
     }
@@ -170,6 +170,23 @@ fun Home(vm: MainViewModel, initialUrl: String, modifier: Modifier) {
             text = { Text("Puedes cerrarla ahora y se borra del teléfono, o guardarla cifrada solo aquí (caduca a los 7 días).") },
             confirmButton = { TextButton(onClick = { vm.keepSession(s.host) }) { Text("Mantener") } },
             dismissButton = { TextButton(onClick = { vm.closeSession(s.host) }) { Text("Cerrar y borrar") } }
+        )
+    }
+    (vm.state as? UiState.AuthPrompt)?.let { s ->
+        AlertDialog(
+            onDismissRequest = vm::cancel,
+            title = { Text("Inicio de sesión requerido") },
+            text = { Text(s.message) },
+            confirmButton = {
+                TextButton(onClick = { vm.openLogin(s.host, s.url) }) {
+                    Text("Iniciar sesión")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = vm::cancel) {
+                    Text("No en este momento")
+                }
+            }
         )
     }
 
