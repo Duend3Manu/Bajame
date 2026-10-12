@@ -23,6 +23,8 @@ class Prefs(ctx: Context) {
         private set
     var customBgPath by mutableStateOf(sp.getString("bg_path", null))
         private set
+    var textColor by mutableStateOf(sp.getInt("text_color", android.graphics.Color.WHITE))
+        private set
 
     fun updateAlias(v: String) {
         val clean = v.trim().take(30)
@@ -52,5 +54,10 @@ class Prefs(ctx: Context) {
     fun setCustomBg(path: String?) {
         customBgPath = path
         sp.edit().putString("bg_path", path).apply()
+    }
+
+    fun updateTextColor(color: Int) {
+        textColor = color
+        sp.edit().putInt("text_color", color).apply()
     }
 }

@@ -128,6 +128,31 @@ fun SettingsScreen(vm: MainViewModel) {
         }
 
         Spacer(modifier = Modifier.height(4.dp))
+        Text("Color de las letras", style = MaterialTheme.typography.titleSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Button(
+                onClick = { p.updateTextColor(android.graphics.Color.WHITE) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                shape = RoundedCornerShape(12.dp)
+            ) { Text("Blanco", color = Color.Black) }
+
+            Button(
+                onClick = { p.updateTextColor(android.graphics.Color.parseColor("#FFD700")) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700)),
+                shape = RoundedCornerShape(12.dp)
+            ) { Text("Amarillo", color = Color.Black) }
+
+            Button(
+                onClick = { p.updateTextColor(android.graphics.Color.BLACK) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                shape = RoundedCornerShape(12.dp)
+            ) { Text("Negro", color = Color.White) }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
         Text("Selector de Color Principal (Círculo Cromático)", style = MaterialTheme.typography.titleSmall)
         ColorWheelPicker { newColor ->
             p.setColors(p.bgColor, p.barColor, newColor.toArgb())

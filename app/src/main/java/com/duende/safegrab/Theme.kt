@@ -32,15 +32,15 @@ fun SafeGrabTheme(prefs: Prefs, content: @Composable () -> Unit) {
     val bg = if (prefs.bgColor != 0) Color(prefs.bgColor) else base.background
     val bar = if (prefs.barColor != 0) Color(prefs.barColor) else base.surfaceContainer
     val btn = if (prefs.btnColor != 0) Color(prefs.btnColor) else base.primary
-    val onBg = readable(bg)
-    val card = lerp(bg, onBg, 0.08f)
+    val textC = if (prefs.textColor != 0) Color(prefs.textColor) else readable(bg)
+    val card = lerp(bg, textC, 0.12f)
     val scheme = base.copy(
-        background = bg, onBackground = onBg,
-        surface = bg, onSurface = onBg,
-        surfaceVariant = card, onSurfaceVariant = onBg.copy(alpha = 0.75f),
+        background = bg, onBackground = textC,
+        surface = bg, onSurface = textC,
+        surfaceVariant = card, onSurfaceVariant = textC.copy(alpha = 0.8f),
         surfaceContainer = bar,
         surfaceContainerHigh = card, surfaceContainerHighest = card,
-        outline = onBg.copy(alpha = 0.5f),
+        outline = textC.copy(alpha = 0.5f),
         primary = btn, onPrimary = readable(btn)
     )
     MaterialTheme(colorScheme = scheme, content = content)
