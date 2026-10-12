@@ -1,34 +1,44 @@
-# SafeGrab (esqueleto)
+# Bajame 🎬🔒
 
-Abrir la carpeta en Android Studio (genera el Gradle wrapper solo) y ejecutar en un dispositivo real.
+**Bajame** es una aplicación moderna para Android desarrollada con **Jetpack Compose** y **Material 3** que permite descargar videos, música e imágenes de redes sociales (YouTube, X/Twitter, Instagram, TikTok) de forma **100% privada, sin servidores intermediarios, sin cuentas y sin analíticas**.
 
-## Flujo
-1. Pegas (o compartes desde la red social) el enlace de UN video/imagen.
-2. Intenta descargar sin sesión. Si el contenido exige login -> WebView limpio (tipo incógnito).
-3. Tomas la sesión (cookies) solo en RAM -> yt-dlp descarga -> se borra el archivo temporal de cookies.
-4. Diálogo: "Mantener" (cifrada con Keystore) o "Cerrar y borrar".
+---
 
-## Selector de calidades (v0.2)
-- `yt-dlp --dump-json` (getInfo) lista los formatos; `FormatParser` los agrupa en Video+audio / Solo video / Solo audio con peso.
-- Pesos: reales si el sitio los informa; si no, estimados por bitrate x duración (se marcan con ≈).
-- YouTube-style (video y audio separados): se une con ffmpeg a mp4/mkv. X/Instagram/Facebook suelen venir ya completos.
-- Descarga en servicio en primer plano (no WorkManager: guardaría cookies en disco). START_NOT_STICKY.
+## 🌟 Características Principales
 
-## Pendiente / ideas
-- Verificar la última versión de youtubedl-android y actualizar yt-dlp desde la app (YoutubeDL.updateYoutubeDL).
-- Imágenes: yt-dlp casi no baja fotos; hará falta un módulo aparte (og:image / URL directa).
-- Si cambian los nombres de campos de VideoFormat en la librería, ajustar FormatParser.
-- Ícono y tema propios.
+- **Privacidad Extrema**: Todo ocurre en tu dispositivo. Las cookies y sesiones son temporales en RAM y se borran inmediatamente tras finalizar la tarea.
+- **Bóveda Privada (Vault)**: Las descargas se almacenan en el almacenamiento privado de la app protegido con un archivo `.nomedia`, haciéndolas completamente invisibles para la galería del teléfono, WhatsApp, Telegram u otras aplicaciones.
+- **Reproductor Interno Privado (Media3 ExoPlayer)**: Reproduce tus videos y audios descargados directamente dentro de la app sin generar caché en el sistema ni dejar registros en historiales externos. Incluye protección contra capturas de pantalla (`FLAG_SECURE`).
+- **Navegador Incógnito Integrado (WebView)**: Para contenido protegido o privado (como Reels de Instagram o posts de X), puedes iniciar sesión de forma segura. La app nunca ve ni almacena tus contraseñas.
+- **Selector Inteligente de Calidades**: Agrupa automáticamente las opciones en **Video + Audio** (unidas mediante `ffmpeg`), **Solo Video** y **Solo Audio (Conversión a MP3)** con cálculo de peso estimado (`≈`).
+- **Bloqueo Biométrico**: Protege el acceso a la app mediante huella dactilar, reconocimiento facial o PIN del dispositivo.
+- **Personalización Completa**: Tema automático, claro u oscuro y selector de paleta de colores HSV personalizado.
 
-## v0.3 — Actualizaciones y repositorio seguro
-- `Updater.kt`: actualiza yt-dlp (1 vez al día, o tras un fallo) y avisa de nuevas versiones de la app leyendo GitHub Releases. Interruptor en la pantalla de inicio. Cambia `REPO` en `Updater.kt` por el nombre real del repo.
-- Verifica los nombres `YoutubeDL.UpdateChannel` / `updateYoutubeDL` contra la versión de la librería que uses.
-- `PRIVACY.md`, `SECURITY.md`, `.gitignore` y escaneo de secretos (gitleaks) listos para el repositorio.
-- Pendiente: nueva interfaz (alias, barra inferior de 4 pestañas, colores personalizables, detección del portapapeles). Ver el plan.
+---
 
-## v1.0.0 — Interfaz completa
-- Alias al inicio, barra inferior (Inicio / Imágenes / Videos / Música), ajustes con tema claro/oscuro/auto y paleta HSV para fondo, barra y botones.
-- Bloqueo biométrico (Lock.kt), pantalla de ajustes con sesiones guardadas (caducan a 7 días) y botón "Borrar todo".
-- Imágenes: enlace directo (X con name=orig) o navegador temporal que detecta imágenes grandes (ImagePicker.kt).
-- Botón cancelar, mensajes de error en español, detección del portapapeles, WebView restringido por dominio y FLAG_SECURE.
-- No incluido aún: selector de carpeta de destino, modo "tocar la imagen", rules.json firmado, R8/firma de release.
+## 🛠️ Tecnologías y Arquitectura
+
+- **Kotlin** & **Coroutines / StateFlow**
+- **Jetpack Compose** & **Material 3**
+- **Jetpack Media3 (ExoPlayer)** para reproducción multimedia local
+- **youtubedl-android (`yt-dlp` + `ffmpeg`)** para la extracción y procesamiento de medios en el dispositivo
+- **AndroidX Security Crypto** (`EncryptedSharedPreferences`) para sesiones opcionales cifradas
+
+---
+
+## 📥 Compilación y Ejecución
+
+1. Clona el repositorio o descarga el código fuente:
+   ```bash
+   git clone https://github.com/Duend3Manu/Bajame.git
+   ```
+2. Abre la carpeta del proyecto en **Android Studio** (Iguana, Jellyfish, Ladybug, Meerkat o superior).
+3. Asegúrate de contar con **Gradle 8.13** y **Java 17/21**.
+4. Conecta un dispositivo físico o emulador Android (API 29+) y ejecuta la compilación (`Build` -> `Build Bundle(s) / APK(s)` o ejecuta `app:assembleDebug`).
+
+---
+
+## 🤝 Privacidad y Repositorio
+
+- Consulta los detalles de privacidad en [PRIVACY.md](PRIVACY.md).
+- Repositorio oficial en GitHub: [https://github.com/Duend3Manu/Bajame](https://github.com/Duend3Manu/Bajame).
