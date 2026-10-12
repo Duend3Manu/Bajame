@@ -205,11 +205,12 @@ class MainViewModel(private val app: Application) : AndroidViewModel(app) {
         analyze(finalCookies)
     }
 
-    fun keepSession(h: String) {
+    fun keepSession(h: String, dias: Int = 7) {
         tempCookies?.let { store.save(h, it) }
         tempCookies = null; fromLogin = false
         SessionHolder.clear()
-        state = UiState.Done("Sesión de $h guardada cifrada en este teléfono")
+        val msg = if (dias > 1000) "para siempre" else "por $dias día(s)"
+        state = UiState.Done("Sesión de $h guardada $msg")
     }
 
     fun closeSession(h: String) {
