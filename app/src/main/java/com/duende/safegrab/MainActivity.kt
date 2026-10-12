@@ -61,32 +61,34 @@ class MainActivity : FragmentActivity() {
 @Composable
 fun App(vm: MainViewModel, initialUrl: String) {
     SafeGrabTheme(vm.prefs) {
-        Box(Modifier.fillMaxSize()) {
-            vm.prefs.customBgPath?.let { bgPath ->
-                val bgFile = File(bgPath)
-                if (bgFile.exists()) {
-                    Image(
-                        painter = rememberAsyncImagePainter(bgFile),
-                        contentDescription = "Fondo personalizado",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
+            Box(Modifier.fillMaxSize()) {
+                vm.prefs.customBgPath?.let { bgPath ->
+                    val bgFile = File(bgPath)
+                    if (bgFile.exists()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(bgFile),
+                            contentDescription = "Fondo personalizado",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
+                    }
                 }
-            }
 
-            Surface(
-                Modifier.fillMaxSize(),
-                color = if (vm.prefs.customBgPath != null) Color.Transparent else MaterialTheme.colorScheme.background
-            ) {
-                val s = vm.state
-                when {
-                    vm.prefs.alias.isBlank() -> Onboarding(vm.prefs)
-                    vm.locked -> LockScreen(vm)
-                    s is UiState.Logging -> LoginScreen(s.host, onDone = { vm.loginDone(s.host, s.url, it) }, onCancel = vm::cancel)
-                    s is UiState.Choose -> Picker(vm, s.info)
-                    s is UiState.ImagePick -> ImagePicker(s.host, s.url, onDownload = vm::downloadImages, onClose = vm::cancel)
-                    else -> MainShell(vm, initialUrl)
+                Surface(
+                    Modifier.fillMaxSize(),
+                    color = if (vm.prefs.customBgPath != null) Color.Transparent else MaterialTheme.colorScheme.background
+                ) {
+                    val s = vm.state
+                    when {
+                        vm.prefs.alias.isBlank() -> Onboarding(vm.prefs)
+                        vm.locked -> LockScreen(vm)
+                        s is UiState.Logging -> LoginScreen(s.host, onDone = { vm.loginDone(s.host, s.url, it) }, onCancel = vm::cancel)
+                        s is UiState.Choose -> Picker(vm, s.info)
+                        s is UiState.ImagePick -> ImagePicker(s.host, s.url, onDownload = vm::downloadImages, onClose = vm::cancel)
+                        else -> MainShell(vm, initialUrl)
+                    }
                 }
             }
         }
